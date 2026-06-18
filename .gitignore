@@ -1,9 +1,11 @@
 node_modules/
-.env
-.env.local
 .env.*.local
 dist/
 .next/
 *.log
 .DS_Store
 .prisma/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+config.bat

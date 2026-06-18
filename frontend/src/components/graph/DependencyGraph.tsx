@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -19,6 +19,8 @@ import { ServiceNode, type ServiceNodeData } from "./ServiceNode";
 import type { Service, DependencyEdge, ImpactedService } from "@/lib/api";
 
 const nodeTypes = { serviceNode: ServiceNode };
+const EMPTY_IDS: string[] = [];
+const EMPTY_IMPACTED: ImpactedService[] = [];
 
 interface DependencyGraphProps {
   services: Service[];
@@ -82,8 +84,8 @@ function buildLayout(services: Service[], deps: DependencyEdge[]) {
 export function DependencyGraph({
   services,
   dependencies,
-  failedServiceIds = [],
-  impactedServices = [],
+  failedServiceIds = EMPTY_IDS,
+  impactedServices = EMPTY_IMPACTED,
   onConnect,
 }: DependencyGraphProps) {
   const impactMap = useMemo(() => {
@@ -144,8 +146,11 @@ export function DependencyGraph({
     [dependencies, failedSet, impactMap]
   );
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
+  useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -158,9 +163,10 @@ export function DependencyGraph({
   );
 
   return (
+    <div style={{ width: "100%", height: "100%" }}>
     <ReactFlow
-      nodes={initialNodes}
-      edges={initialEdges}
+      nodes={nodes}
+      edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={handleConnect}
@@ -183,5 +189,6 @@ export function DependencyGraph({
         }}
       />
     </ReactFlow>
+    </div>
   );
 }

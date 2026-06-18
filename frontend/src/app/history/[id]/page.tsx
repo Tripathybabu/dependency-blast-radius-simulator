@@ -1,15 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
 import { simulationsApi, servicesApi, dependenciesApi } from "@/lib/api";
 import { DependencyGraph } from "@/components/graph/DependencyGraph";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, severityColor, severityLabel, cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ImpactedService } from "@/lib/api";
 
 export default function SimulationDetailPage({ params }: { params: { id: string } }) {
@@ -21,7 +21,7 @@ export default function SimulationDetailPage({ params }: { params: { id: string 
     queryFn: () => simulationsApi.get(id),
   });
 
-  const { data: services = [] } = useQuery({
+  const { data: services = [], isLoading: servicesLoading } = useQuery({
     queryKey: ["services"],
     queryFn: () => servicesApi.list(),
   });
@@ -33,13 +33,13 @@ export default function SimulationDetailPage({ params }: { params: { id: string 
 
   const serviceMap = Object.fromEntries(services.map((s) => [s.id, s]));
 
+  const allImpacted = useMemo(() => [
+    ...(simulation?.blastRadius?.directlyImpacted ?? []),
+    ...(simulation?.blastRadius?.indirectlyImpacted ?? []),
+  ], [simulation]);
+
   if (isLoading) return <div className="p-8 text-muted-foreground">Loading simulation...</div>;
   if (!simulation) return <div className="p-8 text-destructive">Simulation not found.</div>;
-
-  const allImpacted = [
-    ...(simulation.blastRadius?.directlyImpacted ?? []),
-    ...(simulation.blastRadius?.indirectlyImpacted ?? []),
-  ];
 
   const pathServices = selectedPath
     ? selectedPath.dependencyPath.map((id) => serviceMap[id]?.name ?? id)
@@ -168,12 +168,18 @@ export default function SimulationDetailPage({ params }: { params: { id: string 
 
         {/* Graph */}
         <div className="flex-1 relative">
-          <DependencyGraph
-            services={services}
-            dependencies={dependencies}
-            failedServiceIds={simulation.failedServiceIds}
-            impactedServices={allImpacted}
-          />
+          {servicesLoading ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+              Loading graph...
+            </div>
+          ) : (
+            <DependencyGraph
+              services={services}
+              dependencies={dependencies}
+              failedServiceIds={simulation.failedServiceIds}
+              impactedServices={allImpacted}
+            />
+          )}
         </div>
       </div>
     </div>
