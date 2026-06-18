@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Criticality {
+  low
+  medium
+  high
+  critical
+}
+
+enum ServiceStatus {
+  healthy
+  degraded
+  failed
+}
+
+enum SimulationStatus {
+  running
+  completed
+}
+
+enum ImpactType {
+  direct
+  indirect
+}
+
+model Service {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  description String?
+  owner       String?
+  criticality Criticality   @default(medium)
+  status      ServiceStatus @default(healthy)
+  metadata    Json?
+
+  // Relationships
+  dependsOn     Dependency[] @relation("SourceService")
+  dependedOnBy  Dependency[] @relation("TargetService")
+
+  // Simulation results
+  simulationResults SimulationResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("services")
+}
+
+model Dependency {
+  id               String  @id @default(uuid())
+  sourceServiceId  String
+  targetServiceId  String
+  dependencyType   String? @default("hard")
+
+  sourceService Service @relation("SourceService", fields: [sourceServiceId], references: [id], onDelete: Cascade)
+  targetService Service @relation("TargetService", fields: [targetServiceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sourceServiceId, targetServiceId])
+  @@map("dependencies")
+}
+
+model Simulation {
+  id               String           @id @default(uuid())
+  name             String?
+  failedServiceIds String[]
+  blastRadius      Json?
+  severityScore    Float            @default(0)
+  impactedCount    Int              @default(0)
+  status           SimulationStatus @default(completed)
+  summary          String?
+
+  results SimulationResult[]
+
+  createdAt DateTime @default(now())
+
+  @@map("simulations")
+}
+
+model SimulationResult {
+  id               String     @id @default(uuid())
+  simulationId     String
+  affectedServiceId String
+  impactType       ImpactType
+  depth            Int
+  dependencyPath   String[]
+  severityScore    Float      @default(0)
+
+  simulation      Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  affectedService Service    @relation(fields: [affectedServiceId], references: [id], onDelete: Cascade)
+
+  @@map("simulation_results")
+}
